@@ -54,10 +54,12 @@ export function useAsyncLazy<D>(input: AsyncLazyOptions<D> | (() => PromiseLike<
     }, [
         options.promise
     ])
-    const retry = useCallback(() => {
-        setEvent({
-            status: "loading"
-        })
+    const retry = useCallback((suppressReload = false) => {
+        if (!suppressReload) {
+            setEvent({
+                status: "loading"
+            })
+        }
         run()
     }, [
         run
@@ -101,7 +103,7 @@ export function asyncified<I extends {}, D extends {}, P extends {}>(factory: (p
     })
 }
 
-type Retry = () => void
+export type Retry = (suppressReload?: boolean | undefined) => void
 
 export interface AsyncifiedProps<D> extends AsyncLazyOptions<D> {
 

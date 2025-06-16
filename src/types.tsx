@@ -71,3 +71,5 @@ export interface LazyOptions {
  * Overrides for lazy options.
  */
 export type LazyOverrides = Partial<LazyOptions>
+
+export type ExtractLazy<T> = T extends LazyFulfilled<infer D> ? D : never
