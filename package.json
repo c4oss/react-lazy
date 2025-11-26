@@ -22,12 +22,13 @@
         "state-hooks": "link:../state-hooks/",
         "value-or-factory": "^0.0.1"
     },
-    "devDependencies": {
-        "@types/react": "^19.1.2",
-        "typescript": "^5.8.3"
-    },
     "peerDependencies": {
-        "react": "^19.0.0"
+        "react": "^19.2.0"
+    },
+    "devDependencies": {
+        "@types/react": "^19.2.7",
+        "react": "^19.2.0",
+        "typescript": "^5.9.3"
     },
     "packageManager": "yarn@4.9.1"
 }
