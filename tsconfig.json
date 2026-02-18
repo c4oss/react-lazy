@@ -21,6 +21,7 @@
         "declarationDir": "dist/types",
         "sourceMap": true,
         "skipLibCheck": true,
+        "esModuleInterop": true
     },
     "include": [
         "./src"
