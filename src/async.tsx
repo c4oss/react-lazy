@@ -53,7 +53,7 @@ export function useAsyncLazy<D>(input: AsyncLazyOptions<D> | (() => PromiseLike<
         })
     }, [
         options.promise
-    ])
+    ]) 
     const retry = useCallback((suppressReload = false) => {
         if (!suppressReload) {
             setEvent({

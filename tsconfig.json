@@ -15,15 +15,13 @@
         "noFallthroughCasesInSwitch": true,
         "useUnknownInCatchVariables": true,
         "exactOptionalPropertyTypes": true,
-        "moduleResolution": "node",
-        "target": "ESNext",
+        "moduleResolution": "nodenext",
+        "module": "nodenext",
+        "target": "esnext",
         "declaration": true,
-        "declarationDir": "dist/types",
         "sourceMap": true,
         "skipLibCheck": true,
-        "esModuleInterop": true
-    },
-    "include": [
-        "./src"
-    ]
+        "rootDir": "src",
+        "outDir": "dist"
+    }
 }
