@@ -1,19 +1,21 @@
 {
-    "name": "react-lazy",
+    "name": "@ispb/react-lazy",
     "version": "0.0.1",
     "license": "MIT",
+    "type": "module",
+    "sideEffects": false,
     "scripts": {
-        "clean": "rm -rf dist",
         "build": "tsc",
         "watch": "tsc --watch"
     },
-    "main": "./dist/index.js",
-    "module": "./dist/index.js",
-    "types": "./dist/index.d.ts",
+    "exports": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+    },
     "dependencies": {
         "p-defer": "^4.0.1",
         "rxjs": "^7.8.2",
-        "state-hooks": "link:../state-hooks/",
+        "state-hooks": "file:../state-hooks",
         "value-or-factory": "^0.0.1"
     },
     "peerDependencies": {

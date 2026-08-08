@@ -1,11 +1,11 @@
 
 import { ReactNode, useCallback, useEffect, useState } from "react"
 import { ValueOrFactory, callOrGet } from "value-or-factory"
-import { LazyHOCOptions, lazified } from "."
-import { Lazy } from "./components"
-import { useIsFirstMount } from "./internal"
-import { LazyState } from "./state"
-import { LazyEvent, LazyOverrides } from "./types"
+import { Lazy } from "./components.js"
+import { LazyHOCOptions, lazified } from "./hoc.js"
+import { useIsFirstMount } from "./internal.js"
+import { LazyState } from "./state.js"
+import { LazyEvent, LazyOverrides } from "./types.js"
 
 /**
  * Options for the async hook.
@@ -53,7 +53,7 @@ export function useAsyncLazy<D>(input: AsyncLazyOptions<D> | (() => PromiseLike<
         })
     }, [
         options.promise
-    ]) 
+    ])
     const retry = useCallback((suppressReload = false) => {
         if (!suppressReload) {
             setEvent({

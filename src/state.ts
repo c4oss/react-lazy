@@ -1,5 +1,5 @@
-import { usePrevious } from "./internal"
-import { LazyEvent, LazySettled } from "./types"
+import { usePrevious } from "./internal.js"
+import { LazyEvent, LazySettled } from "./types.js"
 
 export type LazyState<D> = {
     readonly isLoading: true

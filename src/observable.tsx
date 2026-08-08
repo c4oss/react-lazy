@@ -1,14 +1,13 @@
 
 import { ReactNode, useEffect, useState } from "react"
 import { Observable, ObservedValueOf } from "rxjs"
-import { Lazy } from "./components"
-import { LazyHOCOptions, lazified } from "./hoc"
-import { useLazyFlatten } from "./hooks"
-import { useIsFirstMount } from "./internal"
-import { LazyState } from "./state"
-import { LazyEvent, LazyOverrides } from "./types"
+import { Lazy } from "./components.js"
+import { LazyHOCOptions, lazified } from "./hoc.js"
+import { useLazyFlatten } from "./hooks.js"
+import { useIsFirstMount } from "./internal.js"
+import { LazyState } from "./state.js"
+import { LazyEvent, LazyOverrides } from "./types.js"
 
-//
 export type ObservableLazyInput = Observable<any>// | Record<string, ObservableInput<any>>
 export type ObservableLazyOutput<X extends ObservableLazyInput> = X extends Observable<any> ? ObservedValueOf<X> : { [K in keyof X]: ObservedValueOf<X[K]> }
 

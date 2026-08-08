@@ -1,9 +1,9 @@
 
-export * from "./async"
-export * from "./components"
-export * from "./hoc"
-export * from "./hooks"
-export * from "./observable"
-export * from "./state"
-export * from "./types"
+export * from "./async.js"
+export * from "./components.js"
+export * from "./hoc.js"
+export * from "./hooks.js"
+export * from "./observable.js"
+export * from "./state.js"
+export * from "./types.js"
 

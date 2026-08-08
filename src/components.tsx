@@ -1,8 +1,8 @@
 
 import { PropsWithChildren, ReactNode, useContext } from "react"
-import { LazyContext } from "./hooks"
-import { LazyState, useLazyState } from "./state"
-import { LazyEvent, LazyOverrides } from "./types"
+import { LazyContext } from "./hooks.js"
+import { LazyState, useLazyState } from "./state.js"
+import { LazyEvent, LazyOverrides } from "./types.js"
 
 export interface LazyProps<D> {
 
