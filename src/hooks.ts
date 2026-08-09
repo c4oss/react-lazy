@@ -1,7 +1,7 @@
 import pDefer from "p-defer"
 import { createContext, useEffect, useMemo, useState } from "react"
 import { Observable, Subject } from "rxjs"
-import { useIsFirstMount } from "state-hooks"
+import { useIsFirstMount } from "./internal.js"
 import { ExtractLazy, LazyEvent, LazyFulfilled, LazyLoading, LazyOverrides, LazyRejected } from "./types.js"
 
 export const LazyContext = createContext<LazyOverrides>({})
