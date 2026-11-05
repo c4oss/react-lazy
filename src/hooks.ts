@@ -1,7 +1,6 @@
 import pDefer from "p-defer"
 import { createContext, useEffect, useMemo, useState } from "react"
 import { Observable, Subject } from "rxjs"
-import { useIsFirstMount } from "./internal.js"
 import { ExtractLazy, LazyEvent, LazyFulfilled, LazyLoading, LazyOverrides, LazyRejected } from "./types.js"
 
 export const LazyContext = createContext<LazyOverrides>({})
@@ -63,22 +62,14 @@ export function useLazyMap<I, O>(event: LazyEvent<I>, map: (value: I) => O) {
 }
 
 export function useObservableAsPromise<T>(observable: Observable<T>) {
-    const [promise, setPromise] = useState(() => pDefer<T>())
-    const isFirstMount = useIsFirstMount()
-    useEffect(() => {
-        if (!isFirstMount) {
-            setPromise(pDefer<T>())
-        }
-    }, [
-        observable
-    ])
+    const [promise, setPromise] = useState(new Promise<T>(() => void 0))
     useEffect(() => {
         const sub = observable.subscribe({
             next: value => {
-                promise.resolve(value)
+                setPromise(Promise.resolve(value))
             },
             error: reason => {
-                promise.reject(reason)
+                setPromise(Promise.reject(reason))
             }
         })
         return () => {
@@ -87,7 +78,7 @@ export function useObservableAsPromise<T>(observable: Observable<T>) {
     }, [
         promise
     ])
-    return promise.promise
+    return promise
 }
 
 export function useLazyAsPromise<T>(event: LazyEvent<T>) {
@@ -124,32 +115,36 @@ export function useLazyAsObservable<T>(event: LazyEvent<T>) {
 }
 
 export function useLazyCombine<T extends Record<string, LazyEvent<unknown>>>(lazies: T): LazyEvent<{ [K in keyof T]: ExtractLazy<T[K]> }> {
-    const entries = Object.entries(lazies)
-    if (entries.map(entry => entry[1]).some(isLoading)) {
-        return {
-            status: "loading" as const,
-        }
-    }
-    else {
-        const failed = entries.map(entry => entry[1]).filter(isRejected).at(0)
-        if (failed !== undefined) {
+    return useMemo(() => {
+        const entries = Object.entries(lazies)
+        if (entries.map(entry => entry[1]).some(isLoading)) {
             return {
-                status: "rejected" as const,
-                reason: failed
+                status: "loading" as const,
             }
         }
         else {
-            return {
-                status: "fulfilled",
-                value: Object.fromEntries(
-                    entries.map(([key, value]) => {
-                        return [
-                            key,
-                            value.status === "fulfilled" ? value.value : undefined,
-                        ] as const
-                    })
-                ) as { [K in keyof T]: ExtractLazy<T[K]> }
+            const failed = entries.map(entry => entry[1]).filter(isRejected).at(0)
+            if (failed !== undefined) {
+                return {
+                    status: "rejected" as const,
+                    reason: failed
+                }
+            }
+            else {
+                return {
+                    status: "fulfilled",
+                    value: Object.fromEntries(
+                        entries.map(([key, value]) => {
+                            return [
+                                key,
+                                value.status === "fulfilled" ? value.value : undefined,
+                            ] as const
+                        })
+                    ) as { [K in keyof T]: ExtractLazy<T[K]> }
+                }
             }
         }
-    }
+    }, [
+        lazies
+    ])
 }

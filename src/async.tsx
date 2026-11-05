@@ -16,7 +16,7 @@ export interface AsyncLazyOptions<D> {
     /**
      * A promise or a function that returns a promise. This MUST be memoized - the function will re-run every time a new value is received.
      */
-    readonly promise: ValueOrFactory<PromiseLike<D>>
+    readonly promise: ValueOrFactory<PromiseLike<D>, [AbortController]>
 
     /**
      * Don't execute immediately.
@@ -39,8 +39,8 @@ export type AsyncLazyEvent<D> = LazyEvent<D> & { readonly retry: Retry }
 export function useAsyncLazy<D>(input: AsyncLazyOptions<D> | (() => PromiseLike<D>)): AsyncLazyEvent<D> {
     const options = typeof input === "function" ? { promise: input } : input
     const [event, setEvent] = useState<LazyEvent<D>>(options.defer === undefined ? { status: "loading" } : { status: "fulfilled", value: options.defer.initial })
-    const run = useCallback(() => {
-        callOrGet(options.promise).then(value => {
+    const run = useCallback((controller: AbortController) => {
+        callOrGet(options.promise, controller).then(value => {
             setEvent({
                 status: "fulfilled",
                 value,
@@ -60,7 +60,11 @@ export function useAsyncLazy<D>(input: AsyncLazyOptions<D> | (() => PromiseLike<
                 status: "loading"
             })
         }
-        run()
+        const controller = new AbortController()
+        run(controller)
+        return () => {
+            controller.abort()
+        }
     }, [
         run
     ])
@@ -76,7 +80,11 @@ export function useAsyncLazy<D>(input: AsyncLazyOptions<D> | (() => PromiseLike<
                 status: "loading"
             })
         }
-        run()
+        const controller = new AbortController()
+        run(controller)
+        return () => {
+            controller.abort()
+        }
     }, [
         run,
     ])
