@@ -1,6 +1,6 @@
 {
     "name": "@ispb/react-lazy",
-    "version": "0.0.6",
+    "version": "0.0.9",
     "license": "MIT",
     "type": "module",
     "sideEffects": false,
@@ -18,6 +18,8 @@
     "dependencies": {
         "p-defer": "^4.0.1",
         "rxjs": "^7.8.2",
+        "shallow-equal": "^3.1.0",
+        "shallowequal": "^1.1.0",
         "value-or-factory": "^0.0.1"
     },
     "peerDependencies": {
@@ -25,6 +27,7 @@
     },
     "devDependencies": {
         "@types/react": "^19.2.18",
+        "@types/shallowequal": "^1.1.5",
         "react": "^19.2.8",
         "typescript": "^7.0.2"
     }

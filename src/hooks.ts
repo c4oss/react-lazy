@@ -1,6 +1,7 @@
 import pDefer from "p-defer"
-import { createContext, useEffect, useMemo, useState } from "react"
+import { createContext, DependencyList, useEffect, useMemo, useRef, useState } from "react"
 import { Observable, Subject } from "rxjs"
+import shallowEqual from "shallowequal"
 import { ExtractLazy, LazyEvent, LazyFulfilled, LazyLoading, LazyOverrides, LazyRejected } from "./types.js"
 
 export const LazyContext = createContext<LazyOverrides>({})
@@ -62,7 +63,7 @@ export function useLazyMap<I, O>(event: LazyEvent<I>, map: (value: I) => O) {
 }
 
 export function useObservableAsPromise<T>(observable: Observable<T>) {
-    const [promise, setPromise] = useState(new Promise<T>(() => void 0))
+    const [promise, setPromise] = useState(() => new Promise<T>(() => void 0))
     useEffect(() => {
         const sub = observable.subscribe({
             next: value => {
@@ -76,7 +77,7 @@ export function useObservableAsPromise<T>(observable: Observable<T>) {
             sub.unsubscribe()
         }
     }, [
-        promise
+        observable
     ])
     return promise
 }
@@ -114,8 +115,23 @@ export function useLazyAsObservable<T>(event: LazyEvent<T>) {
     return subject
 }
 
+function eachEqual<T extends DependencyList>(a: T, b: T) {
+    if (a.length !== b.length) {
+        return false
+    }
+    return a.every((value, key) => shallowEqual(value, b[key]))
+}
+
+export function useShallowMemo<T, D extends DependencyList>(factory: () => T, deps: D) {
+    const ref = useRef(deps)
+    if (!eachEqual(ref.current, deps)) {
+        ref.current = deps
+    }
+    return useMemo(factory, [ref.current])
+}
+
 export function useLazyCombine<T extends Record<string, LazyEvent<unknown>>>(lazies: T): LazyEvent<{ [K in keyof T]: ExtractLazy<T[K]> }> {
-    return useMemo(() => {
+    return useShallowMemo(() => {
         const entries = Object.entries(lazies)
         if (entries.map(entry => entry[1]).some(isLoading)) {
             return {
@@ -127,7 +143,7 @@ export function useLazyCombine<T extends Record<string, LazyEvent<unknown>>>(laz
             if (failed !== undefined) {
                 return {
                     status: "rejected" as const,
-                    reason: failed
+                    reason: failed.reason
                 }
             }
             else {
