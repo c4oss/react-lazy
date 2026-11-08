@@ -1,119 +1,26 @@
-import pDefer from "p-defer"
-import { createContext, DependencyList, useEffect, useMemo, useRef, useState } from "react"
-import { Observable, Subject } from "rxjs"
+import { createContext, DependencyList, useMemo, useRef } from "react"
 import shallowEqual from "shallowequal"
-import { ExtractLazy, LazyEvent, LazyFulfilled, LazyLoading, LazyOverrides, LazyRejected } from "./types.js"
+import { Retry } from "./async.js"
+import { lazyAsObservable, lazyAsPromise, lazyChain, lazyCombine, lazyFlatten, lazyFold, lazyMap, lazyOrElse, lazyRecover } from "./operators.js"
+import { ExtractLazy, LazyEvent, LazyOverrides } from "./types.js"
 
 export const LazyContext = createContext<LazyOverrides>({})
 
-export function isLoading<T>(event: LazyEvent<T>): event is LazyLoading {
-    if (event.status === "loading") {
+/*
+//TODO use this
+function laziesEqual<T>(a: LazyEvent<T>, b: LazyEvent<T>) {
+    if (a.status === "loading" && b.status === "loading") {
         return true
     }
-    else {
-        return false
-    }
-}
-export function isFulfilled<T>(event: LazyEvent<T>): event is LazyFulfilled<T> {
-    if (event.status === "fulfilled") {
+    if (a.status === "fulfilled" && b.status === "fulfilled" && a.value === b.value) {
         return true
     }
-    else {
-        return false
-    }
-}
-export function isRejected<T>(event: LazyEvent<T>): event is LazyRejected {
-    if (event.status === "rejected") {
+    if (a.status === "rejected" && b.status === "rejected" && a.reason === b.reason && a.retry === b.retry) {
         return true
     }
-    else {
-        return false
-    }
+    return false
 }
-
-export function useLazyFlatten<O>(event: LazyEvent<LazyEvent<O>>,) {
-    return useLazyChain(event, event => event)
-}
-export function useLazyChain<I, O>(event: LazyEvent<I>, map: (value: I) => LazyEvent<O>) {
-    return useMemo(() => {
-        if (event.status === "fulfilled") {
-            return map(event.value)
-        }
-        else {
-            return event
-        }
-    }, [
-        event
-    ])
-}
-export function useLazyMap<I, O>(event: LazyEvent<I>, map: (value: I) => O) {
-    return useMemo(() => {
-        if (event.status === "fulfilled") {
-            return {
-                status: "fulfilled" as const,
-                value: map(event.value)
-            }
-        }
-        else {
-            return event
-        }
-    }, [
-        event
-    ])
-}
-
-export function useObservableAsPromise<T>(observable: Observable<T>) {
-    const [promise, setPromise] = useState(() => new Promise<T>(() => void 0))
-    useEffect(() => {
-        const sub = observable.subscribe({
-            next: value => {
-                setPromise(Promise.resolve(value))
-            },
-            error: reason => {
-                setPromise(Promise.reject(reason))
-            }
-        })
-        return () => {
-            sub.unsubscribe()
-        }
-    }, [
-        observable
-    ])
-    return promise
-}
-
-export function useLazyAsPromise<T>(event: LazyEvent<T>) {
-    const [promise, setPromise] = useState(() => pDefer<T>())
-    useEffect(() => {
-        if (event.status === "fulfilled") {
-            promise.resolve(event.value)
-        }
-        else if (event.status === "rejected") {
-            promise.reject(event.reason)
-        }
-        else {
-            setPromise(pDefer<T>())
-        }
-    }, [
-        event
-    ])
-    return promise.promise
-}
-
-export function useLazyAsObservable<T>(event: LazyEvent<T>) {
-    const subject = useMemo(() => new Subject<T>(), [])
-    useEffect(() => {
-        if (event.status === "fulfilled") {
-            subject.next(event.value)
-        }
-        else if (event.status === "rejected") {
-            subject.error(event.reason)
-        }
-    }, [
-        event
-    ])
-    return subject
-}
+*/
 
 function eachEqual<T extends DependencyList>(a: T, b: T) {
     if (a.length !== b.length) {
@@ -121,8 +28,7 @@ function eachEqual<T extends DependencyList>(a: T, b: T) {
     }
     return a.every((value, key) => shallowEqual(value, b[key]))
 }
-
-export function useShallowMemo<T, D extends DependencyList>(factory: () => T, deps: D) {
+function useShallowMemo<T, D extends DependencyList>(factory: () => T, deps: D) {
     const ref = useRef(deps)
     if (!eachEqual(ref.current, deps)) {
         ref.current = deps
@@ -130,37 +36,30 @@ export function useShallowMemo<T, D extends DependencyList>(factory: () => T, de
     return useMemo(factory, [ref.current])
 }
 
+export function useLazyFlatten<O>(event: LazyEvent<LazyEvent<O>>) {
+    return useMemo(() => lazyFlatten(event), [event])
+}
+export function useLazyChain<I, O>(event: LazyEvent<I>, map: (value: I) => LazyEvent<O>) {
+    return useMemo(() => lazyChain(event, map), [event])
+}
+export function useLazyMap<I, O>(event: LazyEvent<I>, map: (value: I) => O) {
+    return useMemo(() => lazyMap(event, map), [event])
+}
+export function useLazyRecover<T>(event: LazyEvent<T>, map: (reason: unknown) => LazyEvent<T>) {
+    return useMemo(() => lazyRecover(event, map), [event])
+}
+export function useLazyOrElse<T, D>(event: LazyEvent<T>, orElse: () => D) {
+    return useMemo(() => lazyOrElse(event, orElse), [event])
+}
+export function useLazyFold<T, O>(event: LazyEvent<T>, loading: () => O, fulfilled: (value: T) => O, rejected: (reason: unknown, retry?: Retry | undefined) => O) {
+    return useMemo(() => lazyFold(event, loading, fulfilled, rejected), [event])
+}
 export function useLazyCombine<T extends Record<string, LazyEvent<unknown>>>(lazies: T): LazyEvent<{ [K in keyof T]: ExtractLazy<T[K]> }> {
-    return useShallowMemo(() => {
-        const entries = Object.entries(lazies)
-        if (entries.map(entry => entry[1]).some(isLoading)) {
-            return {
-                status: "loading" as const,
-            }
-        }
-        else {
-            const failed = entries.map(entry => entry[1]).filter(isRejected).at(0)
-            if (failed !== undefined) {
-                return {
-                    status: "rejected" as const,
-                    reason: failed.reason
-                }
-            }
-            else {
-                return {
-                    status: "fulfilled",
-                    value: Object.fromEntries(
-                        entries.map(([key, value]) => {
-                            return [
-                                key,
-                                value.status === "fulfilled" ? value.value : undefined,
-                            ] as const
-                        })
-                    ) as { [K in keyof T]: ExtractLazy<T[K]> }
-                }
-            }
-        }
-    }, [
-        lazies
-    ])
+    return useShallowMemo(() => lazyCombine(lazies), [lazies])
+}
+export function useLazyAsPromise<T>(event: LazyEvent<T>) {
+    return useMemo(() => lazyAsPromise(event), [event])
+}
+export function useLazyAsObservable<T>(event: LazyEvent<T>) {
+    return useMemo(() => lazyAsObservable(event), [event])
 }

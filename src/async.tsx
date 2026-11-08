@@ -7,6 +7,8 @@ import { useIsFirstMount } from "./internal.js"
 import { LazyState } from "./state.js"
 import { LazyEvent, LazyOverrides } from "./types.js"
 
+export type Retry = (suppressReload?: boolean | undefined) => void
+
 /**
  * Options for the async hook.
  * @typeParam D The data type.
@@ -110,8 +112,6 @@ export function asyncified<I extends {}, D extends {}, P extends {}>(factory: (p
         }
     })
 }
-
-export type Retry = (suppressReload?: boolean | undefined) => void
 
 export interface AsyncifiedProps<D> extends AsyncLazyOptions<D> {
 

@@ -112,7 +112,15 @@ import { LazyContext } from "@ispb/react-lazy"
 </LazyContext.Provider>
 ```
 
-Available options are `onLoading`, `onReloading`, `onError`, `defaultMessage`, `loadingMessage`, `reloadingMessage`, and `errorMessage`. Per-component overrides take precedence over context options.
+Available options are `onLoading`, `onReloading`, `onError`, `defaultMessage`, `loadingMessage`, `reloadingMessage`, `errorMessage`, and `delay`. Per-component overrides take precedence over context options.
+
+Set `delay` (in milliseconds) to avoid flicker for loads that usually finish quickly. Until loading has lasted that long, an initial load renders nothing instead of `onLoading`, and a reload keeps showing the previous content without marking it as reloading (`onReloading` receives `reloading: false`, and the render function's state has `isLoading: false`):
+
+```tsx
+<LazyContext.Provider value={{ delay: 200, onLoading: () => <Spinner /> }}>
+    {children}
+</LazyContext.Provider>
+```
 
 ## Hooks
 
@@ -123,6 +131,8 @@ Available options are `onLoading`, `onReloading`, `onError`, `defaultMessage`, `
 - `useLazyCombine` combines a record of lazy events into one event.
 - `useLazyAsPromise` and `useLazyAsObservable` adapt a lazy event to a promise or RxJS subject.
 - `isLoading`, `isFulfilled`, and `isRejected` are type guards for lazy events.
+
+The mapping hooks are memoized wrappers around plain functions that can be used outside React: `lazyMap`, `lazyChain`, `lazyFlatten`, and `lazyCombine`.
 
 The package also exports `Asyncified`, `asyncified`, `Observing`, `observing`, `Lazy`, and `lazified` for component-based and higher-order-component integrations.
 
