@@ -59,7 +59,11 @@ export interface LazyOptions {
     readonly onError?: OnError | undefined
     readonly loadingMessage?: string | undefined
     readonly reloadingMessage?: string | undefined
-    readonly delay?: number | undefined
+    /**
+     * How long (in milliseconds) a reload must last before it's shown: until then, the previous content is shown as
+     * settled. An initial load always shows at once, as there's nothing to show in its place.
+     */
+    readonly reloadingDelay?: number | undefined
 
 }
 

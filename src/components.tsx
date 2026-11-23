@@ -22,7 +22,7 @@ export interface LazyOverridesProviderProps {
 
 /**
  * Provides lazy overrides to the components below it, on top of any provided above it. `LazyContext.Provider` replaces
- * them instead, so options set further up (e.g. `delay`) are lost.
+ * them instead, so options set further up (e.g. `reloadingDelay`) are lost.
  */
 export function LazyOverridesProvider(props: LazyOverridesProviderProps): ReactNode {
     const parent = useContext(LazyContext)
@@ -33,25 +33,26 @@ export function LazyOverridesProvider(props: LazyOverridesProviderProps): ReactN
 export interface LazyDisplayState<D> {
 
     /**
-     * The state to show. Until loading has lasted the `delay`, a reload shows as the settled state it is reloading from.
+     * The state to show. Until reloading has lasted the `reloadingDelay`, a reload shows as the settled state it is
+     * reloading from.
      */
     readonly state: LazyState<D>
     /**
-     * Whether loading has lasted the `delay`, so it should be shown. An initial load before then shows nothing.
+     * Whether loading should be shown: always for an initial load, and for a reload once it has lasted the
+     * `reloadingDelay`.
      */
     readonly showLoading: boolean
 
 }
 
 /**
- * An event's state as `Lazy` would show it, applying the `delay` from the context (and `overrides`). For components
- * that show the states themselves instead of through `Lazy`.
+ * An event's state as `Lazy` would show it, applying the `reloadingDelay` from the context (and `overrides`). For
+ * components that show the states themselves instead of through `Lazy`.
  */
 export function useLazyDisplayState<D>(event: LazyEvent<D>, overrides?: LazyOverrides | undefined): LazyDisplayState<D> {
-    const context = useContext(LazyContext)
-    const delay = { ...context, ...overrides }.delay
+    const reloadingDelay = { ...useContext(LazyContext), ...overrides }.reloadingDelay
     const actual = useLazyState(event)
-    const showLoading = useDelayedFlag(actual.isLoading, delay)
+    const showLoading = useDelayedFlag(actual.isLoading, actual.isReloading ? reloadingDelay : undefined)
     return {
         state: showLoading ? actual : settle(actual),
         showLoading,
@@ -91,7 +92,7 @@ export function Lazy<D>(props: LazyProps<D>): ReactNode {
 }
 
 /**
- * Presents a reloading state as the settled state it is reloading from, for use while the loading delay has not yet elapsed.
+ * Presents a reloading state as the settled state it is reloading from, for use while the reloading delay has not yet elapsed.
  */
 function settle<D>(state: LazyState<D>): LazyState<D> {
     if (!state.isReloading) {

@@ -5,7 +5,6 @@ import { callOrGet } from "value-or-factory"
 import { PromiseFactory, PromiseInput } from "./async.js"
 import { Lazy } from "./components.js"
 import { LazyHOCOptions, lazified } from "./hoc.js"
-import { useIsFirstMount } from "./internal.js"
 import { LAZY_LOADING, lazyAsPromise } from "./operators.js"
 import { LazyState } from "./state.js"
 import { LazyEvent, LazyOverrides } from "./types.js"
@@ -76,7 +75,9 @@ interface RetryRequest<D> {
  * observable is subscribed to again. A promise can't be, as it has already settled.
  */
 export function useLazyInput<D>(input: LazyInput<D>): LazyEvent<D> {
-    const [event, setEvent] = useState<LazyEvent<D>>(LAZY_LOADING)
+    // The latest result, and the source it came from: a new input is loading from the render it first appears in,
+    // instead of showing the last input's result until its subscription starts.
+    const [current, setCurrent] = useState<{ readonly source?: LazySource<D> | undefined, readonly event: LazyEvent<D> }>({ event: LAZY_LOADING })
     const [retried, setRetried] = useState<RetryRequest<D>>()
     const request = retried !== undefined && retried.source === input ? retried : undefined
     const retry = useCallback((suppressReload = false) => {
@@ -86,12 +87,13 @@ export function useLazyInput<D>(input: LazyInput<D>): LazyEvent<D> {
     }, [
         input
     ])
-    const isFirstMount = useIsFirstMount()
     useEffect(() => {
         if (!isLazySource(input)) {
             return
         }
-        if (!isFirstMount && request?.suppressReload !== true) {
+        const setEvent = (event: LazyEvent<D>) => setCurrent({ source: input, event })
+        // a new input is already loading (see above); a retry of the same one goes back to loading, unless suppressed
+        if (request !== undefined && !request.suppressReload) {
             setEvent(LAZY_LOADING)
         }
         if (isObservable(input)) {
@@ -140,7 +142,7 @@ export function useLazyInput<D>(input: LazyInput<D>): LazyEvent<D> {
     if (!isLazySource(input)) {
         return input
     }
-    return event
+    return current.source === input ? current.event : LAZY_LOADING
 }
 
 export interface LazyInputOptions<D> {

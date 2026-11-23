@@ -112,12 +112,12 @@ import { LazyContext } from "@ispb/react-lazy"
 </LazyContext.Provider>
 ```
 
-Available options are `onLoading`, `onReloading`, `onError`, `defaultMessage`, `loadingMessage`, `reloadingMessage`, `errorMessage`, and `delay`. Per-component overrides take precedence over context options.
+Available options are `onLoading`, `onReloading`, `onError`, `defaultMessage`, `loadingMessage`, `reloadingMessage`, `errorMessage`, and `reloadingDelay`. Per-component overrides take precedence over context options.
 
-Set `delay` (in milliseconds) to avoid flicker for loads that usually finish quickly. Until loading has lasted that long, an initial load renders nothing instead of `onLoading`, and a reload keeps showing the previous content without marking it as reloading (`onReloading` receives `reloading: false`, and the render function's state has `isLoading: false`):
+Set `reloadingDelay` (in milliseconds) to avoid flicker for reloads that usually finish quickly. Until a reload has lasted that long, it keeps showing the previous content without marking it as reloading (`onReloading` receives `reloading: false`, and the render function's state has `isLoading: false`). An initial load always shows `onLoading` at once, as there's nothing to show in its place:
 
 ```tsx
-<LazyContext.Provider value={{ delay: 200, onLoading: () => <Spinner /> }}>
+<LazyContext.Provider value={{ reloadingDelay: 200, onLoading: () => <Spinner /> }}>
     {children}
 </LazyContext.Provider>
 ```
