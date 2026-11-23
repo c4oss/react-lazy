@@ -1,10 +1,10 @@
 
-import { ReactNode, useEffect, useState } from "react"
+import { ReactNode } from "react"
 import { Observable, ObservedValueOf } from "rxjs"
 import { Lazy } from "./components.js"
 import { LazyHOCOptions, lazified } from "./hoc.js"
 import { useLazyFlatten } from "./hooks.js"
-import { useIsFirstMount } from "./internal.js"
+import { useLazyInput } from "./input.js"
 import { LazyState } from "./state.js"
 import { LazyEvent, LazyOverrides } from "./types.js"
 
@@ -21,36 +21,11 @@ export function useObservableLazyWrapped<D>(options: ObservableLazyOptions<LazyE
     return useLazyFlatten(useObservableLazy(options))
 }
 
-export function useObservableLazy<D>(options: ObservableLazyOptions<D>) {
-    const [event, setEvent] = useState<LazyEvent<D>>({ status: "loading" as const })
-    const isFirstMount = useIsFirstMount()
-    useEffect(() => {
-        if (!isFirstMount) {
-            setEvent({
-                status: "loading"
-            })
-        }
-        const sub = options.of.subscribe({
-            next: value => {
-                setEvent({
-                    status: "fulfilled",
-                    value
-                })
-            },
-            error: reason => {
-                setEvent({
-                    status: "rejected",
-                    reason
-                })
-            }
-        })
-        return () => {
-            sub.unsubscribe()
-        }
-    }, [
-        options.of
-    ])
-    return event
+/**
+ * Subscribes to an observable as a lazy event (see `useLazyInput`): an error can be retried, which subscribes again.
+ */
+export function useObservableLazy<D>(options: ObservableLazyOptions<D>): LazyEvent<D> {
+    return useLazyInput(options.of)
 }
 
 export interface ObservingOptions<D, P> extends ObservableLazyOptions<D>, LazyHOCOptions<LazyState<D>, P> {

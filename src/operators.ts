@@ -2,11 +2,11 @@ import { NEVER, Observable, of, throwError } from "rxjs"
 import { Retry } from "./async.js"
 import { ExtractLazy, LazyEvent, LazyFulfilled, LazyLoading, LazyRejected, LazySettled } from "./types.js"
 
-export function lazyLoading(): LazyLoading {
-    return {
-        status: "loading",
-    }
-}
+/**
+ * The loading event. There is only one, as it carries nothing: every loading event is the same object, so memos and
+ * state updates see no change from one loading event to the next.
+ */
+export const LAZY_LOADING: LazyLoading = Object.freeze({ status: "loading" })
 export function lazyFulfilled<T>(value: T): LazyFulfilled<T> {
     return {
         status: "fulfilled",
@@ -111,9 +111,7 @@ export function lazyRecover<T>(event: LazyEvent<T>, map: (reason: unknown) => La
 export function lazyCombine<T extends Record<string, LazyEvent<unknown>>>(lazies: T): LazyEvent<{ [K in keyof T]: ExtractLazy<T[K]> }> {
     const entries = Object.entries(lazies)
     if (entries.map(entry => entry[1]).some(isLoading)) {
-        return {
-            status: "loading",
-        }
+        return LAZY_LOADING
     }
     const failed = entries.map(entry => entry[1]).filter(isRejected)
     if (failed.length > 0) {
@@ -138,4 +136,21 @@ export function lazyCombine<T extends Record<string, LazyEvent<unknown>>>(lazies
             })
         ) as { [K in keyof T]: ExtractLazy<T[K]> }
     }
+}
+/**
+ * Combines an array of lazy events into a lazy event of their values. Loading if any are loading, rejected (with all reasons) if any are rejected.
+ */
+export function lazyAll<T>(events: readonly LazyEvent<T>[]): LazyEvent<T[]> {
+    if (events.some(isLoading)) {
+        return LAZY_LOADING
+    }
+    const failed = events.filter(isRejected)
+    if (failed.length > 0) {
+        return lazyRejected(failed.map(failed => failed.reason), suppressReload => {
+            failed.forEach(failed => {
+                failed.retry?.(suppressReload)
+            })
+        })
+    }
+    return lazyFulfilled(events.map(event => (event as LazyFulfilled<T>).value))
 }

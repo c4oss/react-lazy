@@ -12,7 +12,7 @@ React 19 is a peer dependency. The observable helpers also use RxJS.
 
 ## Promises
 
-Use `Asyncified` to load a value and render it when available. The promise factory receives an `AbortController`; pass its signal to work that supports cancellation.
+Use `Asyncified` to load a value and render it when available. The promise factory receives an `AbortSignal`; pass it to work that supports cancellation.
 
 ```tsx
 import { useCallback } from "react"
@@ -21,7 +21,7 @@ import { Asyncified } from "@ispb/react-lazy"
 type User = { name: string }
 
 export function UserView() {
-    const loadUser = useCallback((controller: AbortController) => fetch("/api/user", { signal: controller.signal }).then(response => {
+    const loadUser = useCallback((signal: AbortSignal) => fetch("/api/user", { signal }).then(response => {
         if (!response.ok) {
             throw new Error("Could not load user")
         }
@@ -96,7 +96,7 @@ A `LazyEvent<T>` is one of:
 { status: "rejected", reason: unknown }
 ```
 
-Pass an event to `<Lazy>`. Its children can be a node or a render function receiving the value and a `LazyState<T>`. On an initial load, `Lazy` renders `null` unless `onLoading` is provided. If a previously settled event starts loading again, the previous content remains visible and is passed to `onReloading` with `reloading: true`. Rejected events are thrown unless `onError` is provided.
+Pass an event to `<Lazy>`. Its children can be a node or a render function receiving the value and a `LazyState<T>`. On an initial load, `Lazy` renders `null` unless `onLoading` is provided. If a previously settled event starts loading again, the previous content remains visible and is passed to `onReloading` with `reloading: true`. Set `onReloading: "loading"` to show reloads the same as initial loads instead: `onLoading` replaces the content (which unmounts it) until the event settles again. Rejected events are thrown unless `onError` is provided.
 
 Lazy options can be set on an individual component using `overrides`, or for a subtree using `LazyContext.Provider`:
 

@@ -51,16 +51,14 @@ export interface ErrorProps {
 export interface LazyOptions {
 
     readonly onLoading?: OnLoading | undefined
-    readonly onReloading?: OnReloading | undefined
+    /**
+     * Wraps the content while it reloads. `"loading"` shows reloading the same as loading instead: `onLoading`, in
+     * place of the content.
+     */
+    readonly onReloading?: OnReloading | "loading" | undefined
     readonly onError?: OnError | undefined
     readonly loadingMessage?: string | undefined
     readonly reloadingMessage?: string | undefined
-
-    /**
-     * How long (in milliseconds) loading must last before it is shown.
-     * During this time an initial load renders nothing instead of `onLoading`, and a reload keeps showing the previous content as not reloading.
-     * Use this to avoid flicker for loads that usually finish within a few milliseconds.
-     */
     readonly delay?: number | undefined
 
 }

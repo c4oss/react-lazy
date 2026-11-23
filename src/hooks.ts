@@ -1,13 +1,14 @@
-import { createContext, DependencyList, useMemo, useRef } from "react"
-import shallowEqual from "shallowequal"
+import { createContext, useMemo, useRef } from "react"
 import { Retry } from "./async.js"
 import { lazyAsObservable, lazyAsPromise, lazyChain, lazyCombine, lazyFlatten, lazyFold, lazyMap, lazyOrElse, lazyRecover } from "./operators.js"
 import { ExtractLazy, LazyEvent, LazyOverrides } from "./types.js"
 
 export const LazyContext = createContext<LazyOverrides>({})
 
-/*
-//TODO use this
+/**
+ * Whether two lazy events have the same result: both loading, or settled the same way with the same value (or reason).
+ * A new event object for an unchanged result counts as the same.
+ */
 function laziesEqual<T>(a: LazyEvent<T>, b: LazyEvent<T>) {
     if (a.status === "loading" && b.status === "loading") {
         return true
@@ -20,20 +21,19 @@ function laziesEqual<T>(a: LazyEvent<T>, b: LazyEvent<T>) {
     }
     return false
 }
-*/
 
-function eachEqual<T extends DependencyList>(a: T, b: T) {
-    if (a.length !== b.length) {
+/**
+ * Whether two records of lazy events have the same keys, each with the same result (see `laziesEqual`).
+ */
+function lazyRecordsEqual(a: Record<string, LazyEvent<unknown>>, b: Record<string, LazyEvent<unknown>>) {
+    const entries = Object.entries(a)
+    if (entries.length !== Object.keys(b).length) {
         return false
     }
-    return a.every((value, key) => shallowEqual(value, b[key]))
-}
-function useShallowMemo<T, D extends DependencyList>(factory: () => T, deps: D) {
-    const ref = useRef(deps)
-    if (!eachEqual(ref.current, deps)) {
-        ref.current = deps
-    }
-    return useMemo(factory, [ref.current])
+    return entries.every(([key, event]) => {
+        const other = b[key]
+        return other !== undefined && laziesEqual(event, other)
+    })
 }
 
 export function useLazyFlatten<O>(event: LazyEvent<LazyEvent<O>>) {
@@ -55,7 +55,12 @@ export function useLazyFold<T, O>(event: LazyEvent<T>, loading: () => O, fulfill
     return useMemo(() => lazyFold(event, loading, fulfilled, rejected), [event])
 }
 export function useLazyCombine<T extends Record<string, LazyEvent<unknown>>>(lazies: T): LazyEvent<{ [K in keyof T]: ExtractLazy<T[K]> }> {
-    return useShallowMemo(() => lazyCombine(lazies), [lazies])
+    const kept = useRef(lazies)
+    if (!lazyRecordsEqual(kept.current, lazies)) {
+        kept.current = lazies
+    }
+    const current = kept.current
+    return useMemo(() => lazyCombine(current), [current])
 }
 export function useLazyAsPromise<T>(event: LazyEvent<T>) {
     return useMemo(() => lazyAsPromise(event), [event])

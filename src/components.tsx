@@ -1,5 +1,5 @@
 
-import { PropsWithChildren, ReactNode, useContext } from "react"
+import { PropsWithChildren, ReactNode, useContext, useMemo } from "react"
 import { LazyContext } from "./hooks.js"
 import { useDelayedFlag } from "./internal.js"
 import { LazyState, useLazyState } from "./state.js"
@@ -13,13 +13,56 @@ export interface LazyProps<D> {
 
 }
 
+export interface LazyOverridesProviderProps {
+
+    readonly overrides: LazyOverrides
+    readonly children?: ReactNode | undefined
+
+}
+
+/**
+ * Provides lazy overrides to the components below it, on top of any provided above it. `LazyContext.Provider` replaces
+ * them instead, so options set further up (e.g. `delay`) are lost.
+ */
+export function LazyOverridesProvider(props: LazyOverridesProviderProps): ReactNode {
+    const parent = useContext(LazyContext)
+    const value = useMemo(() => ({ ...parent, ...props.overrides }), [parent, props.overrides])
+    return <LazyContext.Provider value={value}>{props.children}</LazyContext.Provider>
+}
+
+export interface LazyDisplayState<D> {
+
+    /**
+     * The state to show. Until loading has lasted the `delay`, a reload shows as the settled state it is reloading from.
+     */
+    readonly state: LazyState<D>
+    /**
+     * Whether loading has lasted the `delay`, so it should be shown. An initial load before then shows nothing.
+     */
+    readonly showLoading: boolean
+
+}
+
+/**
+ * An event's state as `Lazy` would show it, applying the `delay` from the context (and `overrides`). For components
+ * that show the states themselves instead of through `Lazy`.
+ */
+export function useLazyDisplayState<D>(event: LazyEvent<D>, overrides?: LazyOverrides | undefined): LazyDisplayState<D> {
+    const context = useContext(LazyContext)
+    const delay = { ...context, ...overrides }.delay
+    const actual = useLazyState(event)
+    const showLoading = useDelayedFlag(actual.isLoading, delay)
+    return {
+        state: showLoading ? actual : settle(actual),
+        showLoading,
+    }
+}
+
 export function Lazy<D>(props: LazyProps<D>): ReactNode {
     const context = useContext(LazyContext)
     const options = { ...context, ...props.overrides }
-    const actual = useLazyState(props.event)
-    const showLoading = useDelayedFlag(actual.isLoading, options.delay)
-    const state = showLoading ? actual : settle(actual)
-    if (state.isLoading && !state.isSettled) {
+    const { state, showLoading } = useLazyDisplayState(props.event, props.overrides)
+    if (state.isLoading && (!state.isSettled || options.onReloading === "loading")) {
         if (options.onLoading === undefined || !showLoading) {
             return null
         }
@@ -27,7 +70,7 @@ export function Lazy<D>(props: LazyProps<D>): ReactNode {
             message: options.loadingMessage
         })
     }
-    const onReloading = options.onReloading ?? ((props: PropsWithChildren) => props.children)
+    const onReloading = options.onReloading === undefined || options.onReloading === "loading" ? (props: PropsWithChildren) => props.children : options.onReloading
     return onReloading({
         reloading: state.isLoading,
         message: options.reloadingMessage ?? options.loadingMessage,

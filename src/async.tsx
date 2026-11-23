@@ -4,10 +4,13 @@ import { ValueOrFactory, callOrGet } from "value-or-factory"
 import { Lazy } from "./components.js"
 import { LazyHOCOptions, lazified } from "./hoc.js"
 import { useIsFirstMount } from "./internal.js"
+import { LAZY_LOADING } from "./operators.js"
 import { LazyState } from "./state.js"
 import { LazyEvent, LazyOverrides } from "./types.js"
 
 export type Retry = (suppressReload?: boolean | undefined) => void
+export type PromiseFactory<D> = (signal: AbortSignal) => PromiseLike<D>
+export type PromiseInput<D> = PromiseLike<D> | PromiseFactory<D>
 
 /**
  * Options for the async hook.
@@ -18,7 +21,7 @@ export interface AsyncLazyOptions<D> {
     /**
      * A promise or a function that returns a promise. This MUST be memoized - the function will re-run every time a new value is received.
      */
-    readonly promise: ValueOrFactory<PromiseLike<D>, [AbortController]>
+    readonly promise: PromiseInput<D>
 
     /**
      * Don't execute immediately.
@@ -40,9 +43,9 @@ export type AsyncLazyEvent<D> = LazyEvent<D> & { readonly retry: Retry }
 
 export function useAsyncLazy<D>(input: AsyncLazyOptions<D> | (() => PromiseLike<D>)): AsyncLazyEvent<D> {
     const options = typeof input === "function" ? { promise: input } : input
-    const [event, setEvent] = useState<LazyEvent<D>>(options.defer === undefined ? { status: "loading" } : { status: "fulfilled", value: options.defer.initial })
-    const run = useCallback((controller: AbortController) => {
-        callOrGet(options.promise, controller).then(value => {
+    const [event, setEvent] = useState<LazyEvent<D>>(options.defer === undefined ? LAZY_LOADING : { status: "fulfilled", value: options.defer.initial })
+    const run = useCallback((signal: AbortSignal) => {
+        callOrGet(options.promise, signal).then(value => {
             setEvent({
                 status: "fulfilled",
                 value,
@@ -58,12 +61,10 @@ export function useAsyncLazy<D>(input: AsyncLazyOptions<D> | (() => PromiseLike<
     ])
     const retry = useCallback((suppressReload = false) => {
         if (!suppressReload) {
-            setEvent({
-                status: "loading"
-            })
+            setEvent(LAZY_LOADING)
         }
         const controller = new AbortController()
-        run(controller)
+        run(controller.signal)
         return () => {
             controller.abort()
         }
@@ -78,12 +79,10 @@ export function useAsyncLazy<D>(input: AsyncLazyOptions<D> | (() => PromiseLike<
             }
         }
         else {
-            setEvent({
-                status: "loading"
-            })
+            setEvent(LAZY_LOADING)
         }
         const controller = new AbortController()
-        run(controller)
+        run(controller.signal)
         return () => {
             controller.abort()
         }
