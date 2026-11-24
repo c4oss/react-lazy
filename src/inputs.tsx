@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import { Observable, Subscription } from "rxjs"
 import { PromiseFactory } from "./async.js"
 import { isLazySource, LazyInput, LazySource, lazySourceAsObservable } from "./input.js"
@@ -30,12 +30,13 @@ export function useStableArray<T>(array: readonly T[]): readonly T[] {
  * Resolves an array of lazy inputs into a single lazy event of their values.
  * Each source has its own subscription, so changing one source only reloads that source. Identical sources share one subscription.
  * Lazy events in the array are read directly and never cause a resubscription.
+ * Sources are subscribed to before paint, so one that emits on subscribe is never painted as loading (see `useLazyInput`).
  */
 export function useLazyInputs<T extends readonly LazyInput<unknown>[]>(inputs: readonly [...T]): LazyEvent<{ -readonly [K in keyof T]: LazyInputValue<T[K]> }> {
     const sources = useStableArray(inputs.filter(isLazySource))
     const [results, setResults] = useState<ReadonlyMap<LazySource<unknown>, LazySettled<unknown>>>(() => new Map())
     const subscriptions = useRef(new Map<LazySource<unknown>, Subscription>())
-    useEffect(() => {
+    useLayoutEffect(() => {
         const current = subscriptions.current
         const wanted = new Set(sources)
         const update = (source: LazySource<unknown>, event: LazySettled<unknown>) => {
@@ -62,7 +63,7 @@ export function useLazyInputs<T extends readonly LazyInput<unknown>[]>(inputs: r
     }, [
         sources
     ])
-    useEffect(() => {
+    useLayoutEffect(() => {
         const current = subscriptions.current
         return () => {
             current.forEach(sub => sub.unsubscribe())

@@ -1,8 +1,8 @@
 
-import { ReactNode, useCallback, useEffect, useState } from "react"
+import { ReactNode, useCallback, useEffect, useLayoutEffect, useState } from "react"
 import { Observable, firstValueFrom, from, isObservable } from "rxjs"
 import { callOrGet } from "value-or-factory"
-import { PromiseFactory, PromiseInput } from "./async.js"
+import { PromiseFactory, PromiseInput, Retry } from "./async.js"
 import { Lazy } from "./components.js"
 import { LazyHOCOptions, lazified } from "./hoc.js"
 import { LAZY_LOADING, lazyAsPromise } from "./operators.js"
@@ -58,6 +58,41 @@ export function lazySourceAsObservable<D>(source: LazySource<D>): Observable<D> 
 }
 
 /**
+ * Subscribes to an observable, reporting each value or error as a lazy event. A new input is already loading (see
+ * `useLazyInput`); `reload` sends a retry of the same one back to loading first.
+ */
+function subscribeObservable<D>(input: Observable<D>, setEvent: (event: LazyEvent<D>) => void, retry: Retry, reload: boolean) {
+    if (reload) {
+        setEvent(LAZY_LOADING)
+    }
+    const sub = input.subscribe({
+        next: value => setEvent({ status: "fulfilled", value }),
+        error: reason => setEvent({ status: "rejected", reason, retry }),
+    })
+    return () => {
+        sub.unsubscribe()
+    }
+}
+
+/**
+ * Runs a promise (or promise factory), reporting how it settles as a lazy event. Only a factory can be retried, as a
+ * promise has already settled.
+ */
+function runPromise<D>(input: PromiseInput<D>, setEvent: (event: LazyEvent<D>) => void, retry: Retry, reload: boolean) {
+    if (reload) {
+        setEvent(LAZY_LOADING)
+    }
+    const controller = new AbortController()
+    callOrGet(input, controller.signal).then(
+        value => setEvent({ status: "fulfilled", value }),
+        reason => setEvent({ status: "rejected", reason, retry: isPromiseFactory(input) ? retry : undefined }),
+    )
+    return () => {
+        controller.abort()
+    }
+}
+
+/**
  * A retry of a lazy source: for the source it was made for, so it no longer applies once the input changes.
  */
 interface RetryRequest<D> {
@@ -87,52 +122,22 @@ export function useLazyInput<D>(input: LazyInput<D>): LazyEvent<D> {
     }, [
         input
     ])
-    useEffect(() => {
-        if (!isLazySource(input)) {
-            return
-        }
-        const setEvent = (event: LazyEvent<D>) => setCurrent({ source: input, event })
-        // a new input is already loading (see above); a retry of the same one goes back to loading, unless suppressed
-        if (request !== undefined && !request.suppressReload) {
-            setEvent(LAZY_LOADING)
-        }
+    const reload = request !== undefined && !request.suppressReload
+    // Observables are subscribed to before paint: one that emits on subscribe (a subject, a replayed share) then
+    // re-renders with its value before the loading state is ever painted. Promises can't settle synchronously, so
+    // they gain nothing from it and are left until after paint.
+    useLayoutEffect(() => {
         if (isObservable(input)) {
-            const sub = input.subscribe({
-                next: value => {
-                    setEvent({
-                        status: "fulfilled",
-                        value
-                    })
-                },
-                error: reason => {
-                    setEvent({
-                        status: "rejected",
-                        reason,
-                        retry,
-                    })
-                }
-            })
-            return () => {
-                sub.unsubscribe()
-            }
+            return subscribeObservable(input, event => setCurrent({ source: input, event }), retry, reload)
         }
-        else if (isPromiseFactory(input) || isPromiseLike(input)) {
-            const controller = new AbortController()
-            callOrGet(input, controller.signal).then(value => {
-                setEvent({
-                    status: "fulfilled",
-                    value,
-                })
-            }, reason => {
-                setEvent({
-                    status: "rejected",
-                    reason,
-                    retry: isPromiseFactory(input) ? retry : undefined,
-                })
-            })
-            return () => {
-                controller.abort()
-            }
+    }, [
+        input,
+        retry,
+        request?.count,
+    ])
+    useEffect(() => {
+        if (isPromiseFactory(input) || isPromiseLike(input)) {
+            return runPromise(input, event => setCurrent({ source: input, event }), retry, reload)
         }
     }, [
         input,
