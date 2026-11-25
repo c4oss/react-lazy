@@ -3,7 +3,6 @@ import { ReactNode } from "react"
 import { Observable, ObservedValueOf } from "rxjs"
 import { Lazy } from "./components.js"
 import { LazyHOCOptions, lazified } from "./hoc.js"
-import { useLazyFlatten } from "./hooks.js"
 import { useLazyInput } from "./input.js"
 import { LazyState } from "./state.js"
 import { LazyEvent, LazyOverrides } from "./types.js"
@@ -15,10 +14,6 @@ export interface ObservableLazyOptions<D> {
 
     readonly of: Observable<D>
 
-}
-
-export function useObservableLazyWrapped<D>(options: ObservableLazyOptions<LazyEvent<D>>) {
-    return useLazyFlatten(useObservableLazy(options))
 }
 
 /**
